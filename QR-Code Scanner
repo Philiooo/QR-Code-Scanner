@@ -1,0 +1,52 @@
+import qrcode
+from PIL import Image
+
+import cv2
+from pyzbar.pyzbar import decode
+
+
+#--QR-Code scannen --
+def scannen(image_path):
+    img = Image.open(image_path) # öffnet ein Bild
+    decoded = decode(img) # versucht im Feld den QR-Code zu finden
+    if not decoded:
+        print("Could not decode image") #falls keiner gefunden wurde gebe ... aus
+    for obj in decoded: # sonst für jeden gefunden QR-Code den Text ausgeben(UTF-8 dekodierung)
+        print("Inhalt: ", obj.data.decode("utf-8"))
+
+#--QR-Code with Camara scannen
+def liveScanner():
+        cap = cv2.VideoCapture(0) # öffnet die Kamara
+        print("Start Camera... press Q to quit")
+
+        while True: # Endlosschleife, um laufende Kamarabilder zu lesen
+            ret, frame = cap.read() # Kamarabild einlesen (ret = Erfolg)
+            if not ret: # wenn kein Bild gelesen wurde, Abbruch
+                print("Camera is closed")
+                break
+
+            decoded_objs = decode(frame)
+            for obj in decoded_objs: # QR-Code im aktuellen Bild suchen
+                points = obj.polygon # Eckpunkte des Codes
+                pts = [(point.x, point.y) for point in points] # Zeichnet Linien zwischen den Punkten
+                pts = pts + [pts[0]] #
+                for i in range(len(pts)-1):
+                    cv2.line(frame, pts[i], pts[i+1], (255,0,0), 2)
+
+                qr_text = obj.data.decode("utf-8")
+                cv2.putText(frame, qr_text, (pts[0][0], pts[0][1] -10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255,0,0), 2) # Extrahiert den QR-Code-Text und schreibt ihn auf das Bild
+                print("QR-Code: ", qr_text) # zeigt das Live-Bild mit Makierungen
+            cv2.imshow("QR-Code Live Scanner", frame)
+
+            if cv2.waitKey(1) & 0xFF == ord('q'):# wenn du Q drückst, Abbruch
+                break
+
+#--Hauptprogramm--
+if __name__ == "__main__":
+
+    #QR-Code aus dem Bild scannen
+    scannen("myQRCode.png")
+
+    #Live QR-Code Scanner start
+    liveScanner()
